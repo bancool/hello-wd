@@ -47,7 +47,7 @@ def scrape_chinatelecom():
 
         # Step 2: Scrape all data from the first page.
         # The website's pagination does not work reliably with filters,
-        # but the most recent data appears on the first page.
+        # so we only scrape the first page where the most recent data is.
         all_data = []
         wait.until(EC.presence_of_element_located((By.CLASS_NAME, "tableList")))
         rows = driver.find_elements(By.XPATH, "//div[contains(@class, 'el-table__body-wrapper')]//tr[@class='el-table__row']")
