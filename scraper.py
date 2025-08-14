@@ -21,7 +21,7 @@ def scrape_chinatelecom():
     # Initialize WebDriver
     options = webdriver.ChromeOptions()
     options.page_load_strategy = 'eager'
-    options.add_argument("--headless")
+    # options.add_argument("--headless") # Disabled for visible debugging
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--remote-debugging-pipe")
