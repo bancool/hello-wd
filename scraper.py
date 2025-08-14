@@ -36,7 +36,7 @@ def scrape_chinatelecom():
         driver.get("https://caigou.chinatelecom.com.cn/search")
         wait = WebDriverWait(driver, 20)
 
-        # --- Step 1: Select Province ---
+        # --- Step 1: Select Province via UI ---
         province_select_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@placeholder='请输入省份']/ancestor::div[contains(@class, 'el-input-group')]//button")))
         driver.execute_script("arguments[0].click();", province_select_button)
 
@@ -54,7 +54,7 @@ def scrape_chinatelecom():
             rows = driver.find_elements(By.XPATH, "//div[contains(@class, 'el-table__body-wrapper')]//tr[@class='el-table__row']")
             for row in rows:
                 cols = row.find_elements(By.TAG_NAME, "td")
-                if len(cols) == 4 and '【天津】' in cols[0].text:
+                if len(cols) == 4:
                     all_data.append({
                         "title": cols[0].text,
                         "sale_start_time": cols[1].text,
@@ -63,24 +63,27 @@ def scrape_chinatelecom():
                     })
 
             try:
+                # Robust pagination: wait for the first row of the current page to become stale after clicking 'next'
+                first_row_on_page = wait.until(EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'el-table__body-wrapper')]//tr[@class='el-table__row'][1]")))
+
                 next_button = driver.find_element(By.XPATH, "//button[contains(@class, 'btn-next')]")
                 if not next_button.is_enabled():
                     break
 
-                first_row_title_element = wait.until(EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'el-table__body-wrapper')]//tr[@class='el-table__row'][1]/td[1]")))
-                old_title = first_row_title_element.text
-
                 driver.execute_script("arguments[0].click();", next_button)
 
-                # Wait for the page to update by checking if the first row's title has changed
-                wait.until(lambda d: d.find_element(By.XPATH, "//div[contains(@class, 'el-table__body-wrapper')]//tr[@class='el-table__row'][1]/td[1]").text != old_title)
+                wait.until(EC.staleness_of(first_row_on_page))
             except Exception:
                 break
 
-        # --- Step 3: Filter and Save Data ---
+        # --- Step 3: Filter data locally using Pandas for accuracy and reliability ---
         df = pd.DataFrame(all_data, columns=["title", "sale_start_time", "sale_end_time", "release_date"])
 
         if not df.empty:
+            # Filter by province as a safeguard
+            df = df[df['title'].str.contains('【天津】', na=False)]
+
+            # Filter by date for "last 2 days" (today and yesterday)
             df['release_date'] = pd.to_datetime(df['release_date'], errors='coerce')
             df.dropna(subset=['release_date'], inplace=True)
 
